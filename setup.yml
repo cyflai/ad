@@ -1,6 +1,6 @@
 ---
 
-- hosts: adc
+- hosts: pdc
   tasks:
 
   - win_domain:
@@ -14,17 +14,17 @@
   - debug:
       msg: "rebooted"
 
-- hosts: ad-memeber
+- hosts: dc
   tasks:
 
   - win_dns_client:
       adapter_names: "*"
-      ipv4_addresses: "{{ hostvars[groups['adc'][0]]['ansible_host'] }}"
+      ipv4_addresses: "{{ hostvars[groups['pdc'][0]]['ansible_host'] }}"
 
   - win_domain_membership:
       dns_domain_name: "{{ domain_name }}"
       domain_admin_user: administrator
-      domain_admin_password: "{{ hostvars[groups['adc'][0]]['ansible_password'] }}"
+      domain_admin_password: "{{ hostvars[groups['pdc'][0]]['ansible_password'] }}"
       state: domain
     register: domain_state
 
