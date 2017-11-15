@@ -1,0 +1,31 @@
+---
+
+- hosts: adc
+  tasks:
+
+  - win_domain:
+      dns_domain_name: "{{ domain_name }}"
+      safe_mode_password: "{{ ansible_password }}"
+
+  - win_reboot:
+      when: domain_state.reboot_required
+
+  - debug:
+      msg: "rebooted"
+
+- hosts: ad-memeber
+  tasks:
+
+  - win_dns_client:
+      adapter_names: "*"
+      ipv4_addresses: "{{ hostvars[groups['adc'][0]]['ansible_host'] }}"
+
+  - win_domain_membership:
+      dns_domain_name: "{{ domain_name }}"
+      domain_admin_user: administrator
+      domain_admin_password: "{{ hostvars[groups['adc'][0]]['ansible_password'] }}"
+      state: domain
+    register: domain_state
+
+  - win_reboot:
+      when: domain_state.reboot_required
