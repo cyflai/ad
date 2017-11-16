@@ -24,7 +24,7 @@
 
   - win_shell: (dcdiag | Select-String -Pattern 'passed test').Count
     register: result
-    until: " result.stdout | int > 18"
+    until: " result.stdout | int > 22"
     retries: 60
     delay: 10
     when: domain_state.reboot_required
