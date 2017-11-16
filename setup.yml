@@ -22,8 +22,12 @@
        list: yes
        full: Administrators
 
-  - pause:
-      seconds: 30
+  - win_shell: (dcdiag | Select-String -Pattern 'passed test').Count
+    register: result
+    until: " result.stdout | int > 26"
+    retries: 30
+    delay: 10
+    when: domain_state.reboot_required
 
 - hosts: dc
   vars:
