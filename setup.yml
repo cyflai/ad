@@ -4,17 +4,32 @@
   tasks:
 
   - win_domain:
-      dns_domain_name: "{{ domain_name }}"
+      dns_domain_name: chris.poc
       safe_mode_password: "{{ ansible_password }}"
     register: domain_state
 
   - win_reboot:
-      when: domain_state.reboot_required
+    when: domain_state.reboot_required
 
-  - debug:
-      msg: "rebooted"
+  - win_file:
+      path: C:\shares\quorum
+      state: directory
+
+  - win_share:
+       name: quorum
+       description: top secret share
+       path: c:\shares\quorum
+       list: yes
+       full: Administrators
+
+  - pause:
+      seconds: 30
 
 - hosts: dc
+  vars:
+    cluster_name: SQLCluster
+    cluster_ip: 10.15.76.207
+    share_quorum: \\{{hostvars[groups['pdc'][0]]['ansible_hostname']}}\quorum
   tasks:
 
   - win_dns_client:
@@ -22,11 +37,40 @@
       ipv4_addresses: "{{ hostvars[groups['pdc'][0]]['ansible_host'] }}"
 
   - win_domain_membership:
-      dns_domain_name: "{{ domain_name }}"
+      dns_domain_name: chris.poc
       domain_admin_user: administrator
       domain_admin_password: "{{ hostvars[groups['pdc'][0]]['ansible_password'] }}"
       state: domain
     register: domain_state
 
   - win_reboot:
-      when: domain_state.reboot_required
+    when: domain_state.reboot_required
+
+  - win_feature:
+       name: NET-Framework-Features
+       state: present
+
+  - win_feature:
+       name: Failover-Clustering
+       state: present
+       include_management_tools: True
+
+  - set_fact:
+      node_setup: "{% for host in groups['dc'] %} {{ hostvars[host]['ansible_hostname'] }},{% endfor %}"
+    run_once: yes
+
+  - win_shell: test-cluster -node {{ node_setup | regex_replace(',$','') | regex_replace(' ','')}}
+    run_once: yes
+
+  - win_shell: New-Cluster -Name {{ cluster_name }} -Node {{ node_setup | regex_replace(',$','') | regex_replace(' ','') }}  -StaticAddress {{ cluster_ip }} -NoStorage
+    run_once: yes
+
+  - win_shell: Set-ClusterQuorum -NodeAndFileShareMajority {{ share_quorum }}
+    run_once: yes
+  
+  - win_shell: "{{ item }}"
+    with_items:
+      - "netsh -r {{ ansible_hostname }} advfirewall firewall add rule name=SQL dir=in action=allow protocol=TCP localport=1433"
+      - "netsh -r {{ ansible_hostname }} advfirewall firewall add rule name=SQL dir=out action=allow protocol=TCP localport=1433"
+      - "netsh -r {{ ansible_hostname }} advfirewall firewall add rule name=SQLRepl dir=in action=allow protocol=TCP localport=5022"
+      - "netsh -r {{ ansible_hostname }} advfirewall firewall add rule name=SQLRepl dir=out action=allow protocol=TCP localport=5022"
