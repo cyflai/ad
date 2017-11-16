@@ -4,7 +4,7 @@
   tasks:
 
   - win_domain:
-      dns_domain_name: chris.poc
+      dns_domain_name: "{{ domain_name }}"
       safe_mode_password: "{{ ansible_password }}"
     register: domain_state
 
