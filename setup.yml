@@ -70,6 +70,7 @@
   - set_fact:
       ansible_user: administrator@{{ domain_name }}
       ansible_password: "{{ hostvars[groups['pdc'][0]]['ansible_password'] }}"
+      ansible_winrm_transport: credssp
 
   - win_feature:
        name: NET-Framework-Features
