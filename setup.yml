@@ -100,3 +100,30 @@
       - "netsh -r {{ ansible_hostname }} advfirewall firewall add rule name=SQL dir=out action=allow protocol=TCP localport=1433"
       - "netsh -r {{ ansible_hostname }} advfirewall firewall add rule name=SQLRepl dir=in action=allow protocol=TCP localport=5022"
       - "netsh -r {{ ansible_hostname }} advfirewall firewall add rule name=SQLRepl dir=out action=allow protocol=TCP localport=5022"
+
+  - set_fact:
+      iso_path: "{{ ansible_env.TEMP }}\\SQLServer2017-x64-ENU.iso"
+
+  - win_stat:
+      path: "{{ iso_path }}" 
+      get_checksum: yes
+      checksum_algorithm: md5
+    register: sql_iso
+
+  - name: Download ISO to TEMP
+    win_get_url:
+      url: https://gitlab.hds-cloudconnect.com:8443/SQLServer2017-x64-ENU.iso
+      dest: "{{ iso_path }}"
+      force: yes
+    when: 
+     - (sql_iso.stat.exists == false ) or (sql_iso.stat.checksum != "334fc5f8fdd269fb2d6d5dc1fd61d1c7")
+
+  - name: Mount ISO
+    win_disk_image:
+      image_path: "{{ iso_path }}"
+    register: disk_image_result
+
+
+
+
+
