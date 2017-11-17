@@ -42,7 +42,7 @@
 
   - win_domain_membership:
       dns_domain_name: "{{ domain_name }}"
-      domain_admin_user: administrator
+      domain_admin_user: 'administrator'
       domain_admin_password: "{{ hostvars[groups['pdc'][0]]['ansible_password'] }}"
       state: domain
     register: domain_state
