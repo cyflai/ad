@@ -1,19 +1,19 @@
 ---
-- hosts: localhost
-  tasks:
+#- hosts: localhost
+#  tasks:
   
-  - name: check requests-credssp is installed
-    pip:
-      name: requests-credssp
-      state: present
-  - name: check requests-credssp up to date
-    pip:
-      name: requests-credssp
-      state: latest
+#  - name: check requests-credssp is installed
+#    pip:
+#      name: requests-credssp
+#      state: present
+#  - name: check requests-credssp up to date
+#    pip:
+#      name: requests-credssp
+#      state: latest
 
-  - pip:
-      name: pywinrm
-      state: latest
+#  - pip:
+#      name: pywinrm
+#      state: latest
 
 - hosts: pdc
   tasks:
