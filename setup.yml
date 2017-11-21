@@ -38,6 +38,8 @@
        list: yes
        full: Administrators
 
+  - win_shell: Enable-WSManCredSSP -Role Client -DelegateComputer * -force
+  
   - win_shell: (dcdiag | Select-String -Pattern 'passed test').Count
     register: result
     until: " result.stdout | int > 22"
@@ -64,7 +66,7 @@
   - win_reboot:
     when: domain_state.reboot_required
  
-  - win_shell: Enable-WSManCredSSP -Role Client -DelegateComputer *.{{ domain_name }} -force
+  - win_shell: Enable-WSManCredSSP -Role Client -DelegateComputer * -force
   
   - set_fact:
       ansible_user: administrator@{{ domain_name }}
@@ -151,9 +153,11 @@
     win_copy:
        src: 'files/PsExec.exe'
        dest: 'C:\Windows\System32\PsExec.exe'
+    tags: sqlsetup
+   
 
   - name: "SQL Installation"
-    win_psexec:
-      command: "{{ disk_image_result.mount_path }}setup.exe /INDICATEPROGRESS=False /Q /CONFIGURATIONFILE={{ config_file }}"
-      elevated: yes 
+   # win_psexec:
+    win_shell: "{{ disk_image_result.mount_path }}setup.exe /CONFIGURATIONFILE={{ config_file }}"
+      #system: yes 
     tags: sqlsetup
