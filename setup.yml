@@ -154,6 +154,6 @@
 
   - name: "SQL Installation"
     win_psexec:
-      command: "{{ disk_image_result.mount_path }}setup.exe /Q /CONFIGURATIONFILE={{ config_file }}"
+      command: "{{ disk_image_result.mount_path }}setup.exe /INDICATEPROGRESS=False /Q /CONFIGURATIONFILE={{ config_file }}"
       elevated: yes 
     tags: sqlsetup
