@@ -42,7 +42,7 @@
     register: result
     until: " result.stdout | int > 22"
     retries: 60
-    delay: 10
+    delay: 15
     when: domain_state.reboot_required
 
 - hosts: dc
