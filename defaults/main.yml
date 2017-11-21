@@ -1,5 +1,5 @@
 ---
-domain_name: 'poc.local'
+domain_name: 'poc1.local'
 cluster_name: 'SQLCluster'
 cluster_ip: '10.15.76.208'
 

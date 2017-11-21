@@ -1,0 +1,19 @@
+---
+- hosts: dc
+
+  tasks:
+
+  - name: copy PsExec to remote machine
+    win_copy:
+       src: 'files/PsExec.exe'
+       dest: 'C:\Windows\System32\PsExec.exe'
+  
+  - name: Test the PsExec connection to the local system (target node) with your user
+    win_psexec:
+       command: whoami.exe
+    register: whoami
+    tags:  whoami
+
+
+  - debug:
+      msg: "{{ whoami }}"

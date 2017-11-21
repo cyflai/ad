@@ -18,7 +18,8 @@
 - hosts: pdc
   tasks:
 
-  - win_domain:
+  - name: AD promo
+    win_domain:
       dns_domain_name: "{{ domain_name }}"
       safe_mode_password: "{{ ansible_password }}"
     register: domain_state
@@ -46,8 +47,6 @@
 
 - hosts: dc
   vars:
-    cluster_name: SQLCluster
-    cluster_ip: 10.15.76.207
     share_quorum: \\{{hostvars[groups['pdc'][0]]['ansible_hostname']}}\quorum
   tasks:
 
@@ -87,11 +86,13 @@
 
   - win_shell: test-cluster -node {{ node_setup | regex_replace(',$','') | regex_replace(' ','')}}
     run_once: yes
-
-  - win_shell: New-Cluster -Name {{ cluster_name }} -Node {{ node_setup | regex_replace(',$','') | regex_replace(' ','') }}  -StaticAddress {{ cluster_ip }} -NoStorage
+  
+  - name: 'Crate New Cluster'
+    win_shell: New-Cluster -Name {{ cluster_name }} -Node {{ node_setup | regex_replace(',$','') | regex_replace(' ','') }}  -StaticAddress {{ cluster_ip }} -NoStorage
     run_once: yes
 
-  - win_shell: Set-ClusterQuorum -NodeAndFileShareMajority {{ share_quorum }}
+  - name: 'Setup Quorum'
+    win_shell: Set-ClusterQuorum -NodeAndFileShareMajority {{ share_quorum }}
     run_once: yes
   
   - win_shell: "{{ item }}"
@@ -103,6 +104,8 @@
 
   - set_fact:
       iso_path: "{{ ansible_env.TEMP }}\\SQLServer2017-x64-ENU.iso"
+      config_file: "{{ ansible_env.TEMP }}\\config.ini"
+    tags: sqlsetup
 
   - win_stat:
       path: "{{ iso_path }}" 
@@ -118,12 +121,39 @@
     when: 
      - (sql_iso.stat.exists == false ) or (sql_iso.stat.checksum != "334fc5f8fdd269fb2d6d5dc1fd61d1c7")
 
-  - name: Mount ISO
+  - name: "Mount ISO"
     win_disk_image:
       image_path: "{{ iso_path }}"
     register: disk_image_result
+    tags: sqlsetup
 
+  - name: "Create User AGTSVCACCOUNT"
+    win_domain_user:
+      name: "{{ AGTSVCACCOUNT }}"
+      firstname: "{{ AGTSVCACCOUNT }}"
+      surname: "{{ AGTSVCACCOUNT }}"
+      password: "{{ AGTSVCPASSWORD }}"
+      upn: "{{ AGTSVCACCOUNT }}@{{ domain_name }}"
+      state: present
+    delegate_to: "{{ hostvars[groups['pdc'][0]]['inventory_hostname'] }}"
 
+  - name: "Create User SQLSVCACCOUNT"
+    win_domain_user:
+      name: "{{ SQLSVCACCOUNT }}"
+      firstname: "{{ SQLSVCACCOUNT }}"
+      surname: "{{ SQLSVCACCOUNT }}"
+      password: "{{ SQLSVCPASSWORD }}"
+      upn: "{{ SQLSVCACCOUNT }}@{{ domain_name }}"
+      state: present
+    delegate_to: "{{ hostvars[groups['pdc'][0]]['inventory_hostname'] }}"
 
+  - name: "copy PsExec to remote machine"
+    win_copy:
+       src: 'files/PsExec.exe'
+       dest: 'C:\Windows\System32\PsExec.exe'
 
-
+  - name: "SQL Installation"
+    win_psexec:
+      command: "{{ disk_image_result.mount_path }}setup.exe /Q /CONFIGURATIONFILE={{ config_file }}"
+      elevated: yes 
+    tags: sqlsetup

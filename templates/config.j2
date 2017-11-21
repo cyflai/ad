@@ -93,7 +93,7 @@ INSTANCEDIR="{{ INSTANCEDIR }}"
 
 ; Agent account name 
 
-AGTSVCACCOUNT="{{ AGTSVCACCOUNT }}@{{ domain_name }}"
+AGTSVCACCOUNT="{{ domain_name.split('.')[0] }}\{{ AGTSVCACCOUNT }}"
 AGTSVCPASSWORD= "{{ AGTSVCPASSWORD }}"
 
 ; Auto-start service after installation.  
@@ -134,16 +134,16 @@ SQLCOLLATION="SQL_Latin1_General_CP1_CI_AS"
 
 ; Account for SQL Server service: Domain\User or system account. 
 
-SQLSVCACCOUNT="{{ SQLSVCACCOUNT }}@{{ domain_name }}"
+SQLSVCACCOUNT="{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}"
 SQLSVCPASSWORD="{{ SQLSVCPASSWORD }}"
+
 ; Set to "True" to enable instant file initialization for SQL Server service. If enabled, Setup will grant Perform Volume Maintenance Task privilege to the Database Engine Service SID. This may lead to information disclosure as it could allow deleted content to be accessed by an unauthorized principal. 
 
 SQLSVCINSTANTFILEINIT="False"
 
 ; Windows account(s) to provision as SQL Server system administrators. 
 
-;SQLSYSADMINACCOUNTS="WAITEST\administrator" "waitest\sqladmin"
-SQLSYSADMINACCOUNTS="{{ SQLSYSADMINACCOUNTS }}@{{ domain_name }}"
+SQLSYSADMINACCOUNTS="{{ domain_name.split('.')[0] }}\{{ SQLSYSADMINACCOUNTS }}"
 
 ; The number of Database Engine TempDB files. 
 
