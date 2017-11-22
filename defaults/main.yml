@@ -1,7 +1,9 @@
 ---
-domain_name: 'poc1.local'
+domain_name: 'poc.local'
 cluster_name: 'SQLCluster'
-cluster_ip: '10.15.76.208'
+cluster_ip: '10.15.76.207'
+
+sa_password: 'Zaq!2wsX'
 
 AGTSVCACCOUNT: 'sqladmin'
 AGTSVCPASSWORD: 'Zaq!2wsX'
@@ -22,3 +24,8 @@ INSTANCEDIR: 'C:\Program Files\Microsoft SQL Server'
 SQLBACKUPDIR: 'C:\MSSQL\Backup'
 SQLUSERDBDIR: 'C:\MSSQL\Data'
 SQLUSERDBLOGDIR: 'C:\MSSQL\log'
+
+hadr: 'hadr_endpoint'
+ag: 'ag1'
+vipnet: 'ag_net1'
+vip: '10.15.76.205/255.255.255.0'

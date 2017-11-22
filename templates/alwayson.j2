@@ -1,0 +1,38 @@
+##Create Availability Group
+Import-Module sqlserver
+cd SQLServer:\sql
+
+$sqlperms = @"
+GRANT ALTER ANY AVAILABILITY GROUP TO [NT AUTHORITY\SYSTEM];
+GRANT CONNECT SQL TO [NT AUTHORITY\SYSTEM];
+GRANT VIEW SERVER STATE TO [NT AUTHORITY\SYSTEM];
+"@
+
+{% for host in groups['dc'] %} 
+Enable-SqlAlwaysOn -Path "SQLSERVER:\SQL\{{ hostvars[host]['ansible_hostname'] }}\default" -force 
+Invoke-Sqlcmd -ServerInstance {{ hostvars[host]['ansible_hostname'] }} -Database master -Query $sqlperms
+{% endfor %}
+
+{% for host in groups['dc'] %}
+cd sqlserver:\sql\{{ hostvars[host]['ansible_hostname'] }}\default\Endpoints
+New-SqlHADREndpoint -Name {{ hadr }} -Port 5022
+dir | Set-SqlHADREndpoint -State "Started"
+
+{% endfor %}
+
+cd sqlserver:\sql\{{ hostvars[groups['dc'][0]]['inventory_hostname'] }}\default
+{% for host in groups['dc'] %}
+${{ hostvars[host]['ansible_hostname'] | replace('-', '') }} = New-SqlAvailabilityReplica -Name {{ hostvars[host]['ansible_hostname'] }} -EndpointURL "TCP://{{ hostvars[host]['ansible_hostname'] }}:5022" -AsTemplate -AvailabilityMode SynchronousCommit -FailoverMode Automatic  -ConnectionModeInSecondaryRole AllowAllConnections
+{% endfor %}
+
+cd sqlserver:\sql\{{ hostvars[groups['dc'][0]]['inventory_hostname'] }}\default
+New-SqlAvailabilityGroup {{ ag }} -AvailabilityReplica ({% for host in groups['dc'] %}${{ hostvars[host]['ansible_hostname'] | replace('-', '') }}{% if not loop.last %},{% endif %}{% endfor %})
+
+{% for host in groups['dc'] %}
+{%if not loop.first %}
+cd sqlserver:\sql\{{ hostvars[host]['ansible_hostname'] }}\default
+Join-SqlAvailabilityGroup -Name {{ ag }}
+{% endif %}
+{% endfor %}
+
+New-SqlAvailabilityGroupListener -Name {{ vipnet }} -StaticIp {{ vip }} -path SQLSERVER:\SQL\{{ hostvars[groups['dc'][0]]['inventory_hostname'] }}\DEFAULT\AvailabilityGroups\{{ ag }}

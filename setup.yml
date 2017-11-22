@@ -1,20 +1,4 @@
 ---
-#- hosts: localhost
-#  tasks:
-  
-#  - name: check requests-credssp is installed
-#    pip:
-#      name: requests-credssp
-#      state: present
-#  - name: check requests-credssp up to date
-#    pip:
-#      name: requests-credssp
-#      state: latest
-
-#  - pip:
-#      name: pywinrm
-#      state: latest
-
 - hosts: pdc
   tasks:
 
@@ -72,6 +56,7 @@
       ansible_user: administrator@{{ domain_name }}
       ansible_password: "{{ hostvars[groups['pdc'][0]]['ansible_password'] }}"
       ansible_winrm_transport: credssp
+    tags: setupalwayson
 
   - win_feature:
        name: NET-Framework-Features
@@ -85,17 +70,21 @@
   - set_fact:
       node_setup: "{% for host in groups['dc'] %} {{ hostvars[host]['ansible_hostname'] }},{% endfor %}"
     run_once: yes
+    tags: createcluster
 
   - win_shell: test-cluster -node {{ node_setup | regex_replace(',$','') | regex_replace(' ','')}}
     run_once: yes
+    tags: createcluster
   
   - name: 'Crate New Cluster'
     win_shell: New-Cluster -Name {{ cluster_name }} -Node {{ node_setup | regex_replace(',$','') | regex_replace(' ','') }}  -StaticAddress {{ cluster_ip }} -NoStorage
     run_once: yes
+    tags: createcluster
 
   - name: 'Setup Quorum'
     win_shell: Set-ClusterQuorum -NodeAndFileShareMajority {{ share_quorum }}
     run_once: yes
+    tags: createcluster
   
   - win_shell: "{{ item }}"
     with_items:
@@ -103,17 +92,20 @@
       - "netsh -r {{ ansible_hostname }} advfirewall firewall add rule name=SQL dir=out action=allow protocol=TCP localport=1433"
       - "netsh -r {{ ansible_hostname }} advfirewall firewall add rule name=SQLRepl dir=in action=allow protocol=TCP localport=5022"
       - "netsh -r {{ ansible_hostname }} advfirewall firewall add rule name=SQLRepl dir=out action=allow protocol=TCP localport=5022"
+    tags: setupfirewall
 
   - set_fact:
       iso_path: "{{ ansible_env.TEMP }}\\SQLServer2017-x64-ENU.iso"
       config_file: "{{ ansible_env.TEMP }}\\config.ini"
-    tags: sqlsetup
+      alwayson_file: "{{ ansible_env.TEMP }}\\alwayson.ps1"
+    tags: [setupsql,downloadiso,setupalwayson]
 
   - win_stat:
       path: "{{ iso_path }}" 
       get_checksum: yes
       checksum_algorithm: md5
     register: sql_iso
+    tags: downloadiso
 
   - name: Download ISO to TEMP
     win_get_url:
@@ -122,12 +114,13 @@
       force: yes
     when: 
      - (sql_iso.stat.exists == false ) or (sql_iso.stat.checksum != "334fc5f8fdd269fb2d6d5dc1fd61d1c7")
+    tags: downloadiso
 
   - name: "Mount ISO"
     win_disk_image:
       image_path: "{{ iso_path }}"
     register: disk_image_result
-    tags: sqlsetup
+    tags: [setupsql,downloadiso]
 
   - name: "Create User AGTSVCACCOUNT"
     win_domain_user:
@@ -138,6 +131,8 @@
       upn: "{{ AGTSVCACCOUNT }}@{{ domain_name }}"
       state: present
     delegate_to: "{{ hostvars[groups['pdc'][0]]['inventory_hostname'] }}"
+    run_once: yes
+    tags: createuser
 
   - name: "Create User SQLSVCACCOUNT"
     win_domain_user:
@@ -148,16 +143,47 @@
       upn: "{{ SQLSVCACCOUNT }}@{{ domain_name }}"
       state: present
     delegate_to: "{{ hostvars[groups['pdc'][0]]['inventory_hostname'] }}"
+    run_once: yes
+    tags: createuser
 
   - name: "copy PsExec to remote machine"
     win_copy:
        src: 'files/PsExec.exe'
        dest: 'C:\Windows\System32\PsExec.exe'
-    tags: sqlsetup
+    tags: setupsql
    
+  - name: Create a SQL Configure file config.ini
+    win_template:
+      src: templates/config.j2
+      dest: "{{ config_file }}"
+    tags: setupsql
 
   - name: "SQL Installation"
-   # win_psexec:
-    win_shell: "{{ disk_image_result.mount_path }}setup.exe /CONFIGURATIONFILE={{ config_file }}"
-      #system: yes 
-    tags: sqlsetup
+    win_psexec:
+      command: "{{ disk_image_result.mount_path }}setup.exe /SAPWD=\"{{ sa_password }}\" /IACCEPTSQLSERVERLICENSETERMS /CONFIGURATIONFILE={{ config_file }}"
+      system: yes 
+    tags: setupsql
+
+  - name: Install NuGet
+    win_psmodule:
+      name: NuGet
+      state: present
+    tags: setupsqlmodule
+
+  - name: Add a powershell module
+    win_psmodule:
+      name: SqlServer
+      state: present
+      allow_clobber: yes
+    tags: setupsqlmodule
+ 
+  - template:
+      src: templates/alwayson.j2
+      dest: "{{ alwayson_file }}"
+    force: yes
+    tags: setupalwayson
+
+  - name: install alwayson
+    win_shell: "{{ alwayson_file }}"
+    tags: setupalwayson
+    run_once: yes
