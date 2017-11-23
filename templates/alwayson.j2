@@ -10,16 +10,16 @@ GRANT CONNECT SQL TO [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}];
 GRANT VIEW SERVER STATE TO [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}];
 "@
 
-{% for host in groups['dc'] %} 
-Enable-SqlAlwaysOn -Path "SQLSERVER:\SQL\{{ hostvars[host]['ansible_hostname'] }}\default" -force 
-Invoke-Sqlcmd -ServerInstance {{ hostvars[host]['ansible_hostname'] }} -Database master -Query $sqlperms
-{% endfor %}
-
 {% for host in groups['dc'] %}
 cd sqlserver:\sql\{{ hostvars[host]['ansible_hostname'] }}\default\Endpoints
 New-SqlHADREndpoint -Name {{ hadr }} -Port 5022
 dir | Set-SqlHADREndpoint -State "Started"
 
+{% endfor %}
+
+{% for host in groups['dc'] %} 
+Enable-SqlAlwaysOn -Path "SQLSERVER:\SQL\{{ hostvars[host]['ansible_hostname'] }}\default" -force 
+Invoke-Sqlcmd -ServerInstance {{ hostvars[host]['ansible_hostname'] }} -Database master -Query $sqlperms
 {% endfor %}
 
 cd sqlserver:\sql\{{ hostvars[groups['dc'][0]]['inventory_hostname'] }}\default

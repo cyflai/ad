@@ -99,7 +99,7 @@
       config_file: "{{ ansible_env.TEMP }}\\config.ini"
       alwayson_file: "{{ ansible_env.TEMP }}\\alwayson.ps1"
       sqlstudio_path: "{{ ansible_env.TEMP }}\\SSMS-Setup-ENU.exe"
-    tags: [setupsql,downloadiso,setupalwayson,downloadsqlstudio]
+    tags: [setupsql,downloadiso,setupalwayson,installalwayson,downloadsqlstudio]
 
   - win_stat:
       path: "{{ iso_path }}" 
