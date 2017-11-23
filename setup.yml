@@ -98,7 +98,8 @@
       iso_path: "{{ ansible_env.TEMP }}\\SQLServer2017-x64-ENU.iso"
       config_file: "{{ ansible_env.TEMP }}\\config.ini"
       alwayson_file: "{{ ansible_env.TEMP }}\\alwayson.ps1"
-    tags: [setupsql,downloadiso,setupalwayson]
+      sqlstudio_path: "{{ ansible_env.TEMP }}\\SSMS-Setup-ENU.exe"
+    tags: [setupsql,downloadiso,setupalwayson,downloadsqlstudio]
 
   - win_stat:
       path: "{{ iso_path }}" 
@@ -185,5 +186,27 @@
 
   - name: install alwayson
     win_shell: "{{ alwayson_file }}"
-    tags: setupalwayson
+    tags: installalwayson
+    run_once: yes
+
+  - win_stat:
+      path: "{{ sqlstudio_path }}"
+      get_checksum: yes
+      checksum_algorithm: md5
+    register: sql_studio
+    tags: downloadsqlstudio
+    run_once: yes
+
+  - name: Download sql studio manager
+    win_get_url:
+      url: https://gitlab.hds-cloudconnect.com:8443/SSMS-Setup-ENU.exe
+      dest: "{{ sqlstudio_path }}"
+      force: yes
+    when:
+     - (sql_studio.stat.exists == false ) or (sql_studio.stat.checksum != "402fee196a8a25b59155373441300db1")
+    tags: downloadsqlstudio
+    run_once: yes
+
+  - name: install sql studio 
+    win_shell: "{{ sqlstudio_path }} /install /quiet"
     run_once: yes

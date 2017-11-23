@@ -3,9 +3,11 @@ Import-Module sqlserver
 cd SQLServer:\sql
 
 $sqlperms = @"
-GRANT ALTER ANY AVAILABILITY GROUP TO [NT AUTHORITY\SYSTEM];
-GRANT CONNECT SQL TO [NT AUTHORITY\SYSTEM];
-GRANT VIEW SERVER STATE TO [NT AUTHORITY\SYSTEM];
+create login [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}] from windows;
+GRANT CONNECT ON ENDPOINT::hadr_endpoint TO [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}];
+GRANT ALTER ANY AVAILABILITY GROUP TO [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}];
+GRANT CONNECT SQL TO [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}];
+GRANT VIEW SERVER STATE TO [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}];
 "@
 
 {% for host in groups['dc'] %} 
