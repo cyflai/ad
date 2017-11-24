@@ -210,3 +210,9 @@
   - name: install sql studio 
     win_shell: "{{ sqlstudio_path }} /install /quiet"
     run_once: yes
+
+  - name: download sample sql db
+    win_get_url: 
+       url: https://gitlab.hds-cloudconnect.com:8443/AdventureWorks2017.bak
+       dest: 'c:\AdventureWorks2017.bak'
+    tags: downloadsamplesqldb

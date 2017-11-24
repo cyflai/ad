@@ -5,9 +5,9 @@ cd SQLServer:\sql
 $sqlperms = @"
 create login [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}] from windows;
 GRANT CONNECT ON ENDPOINT::hadr_endpoint TO [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}];
-GRANT ALTER ANY AVAILABILITY GROUP TO [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}];
-GRANT CONNECT SQL TO [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}];
-GRANT VIEW SERVER STATE TO [{{ domain_name.split('.')[0] }}\{{ SQLSVCACCOUNT }}];
+GRANT ALTER ANY AVAILABILITY GROUP TO [NT AUTHORITY\SYSTEM];
+GRANT CONNECT SQL TO [NT AUTHORITY\SYSTEM];
+GRANT VIEW SERVER STATE TO [NT AUTHORITY\SYSTEM];
 "@
 
 {% for host in groups['dc'] %}
@@ -38,3 +38,18 @@ Join-SqlAvailabilityGroup -Name {{ ag }}
 {% endfor %}
 
 New-SqlAvailabilityGroupListener -Name {{ vipnet }} -StaticIp {{ vip }} -path SQLSERVER:\SQL\{{ hostvars[groups['dc'][0]]['inventory_hostname'] }}\DEFAULT\AvailabilityGroups\{{ ag }}
+
+{% for host in groups['dc'] %}
+##restore source DB (relocate DB and log file)
+$RelocateData = New-Object Microsoft.SqlServer.Management.Smo.RelocateFile("AdventureWorks2017", "{{ INSTANCEDIR }}\MSSQL14.MSSQLSERVER\MSSQL\DATA\AdventureWorks2017.mdf")
+$RelocateLog = New-Object Microsoft.SqlServer.Management.Smo.RelocateFile("AdventureWorks2017_Log", "{{ INSTANCEDIR }}\MSSQL14.MSSQLSERVER\MSSQL\DATA\AdventureWorks2017.ldf")
+Restore-SqlDatabase -ServerInstance {{ hostvars[host]['ansible_hostname'] }} -Database AdventureWorks2017 -BackupFile "c:\AdventureWorks2017.bak" -RelocateFile @($RelocateData,$RelocateLog)
+Invoke-Sqlcmd -ServerInstance {{ hostvars[host]['ansible_hostname'] }} "ALTER DATABASE AdventureWorks2017 SET RECOVERY FULL"
+##perform DB full backup
+Backup-SqlDatabase -ServerInstance {{ hostvars[host]['ansible_hostname'] }} -Database "AdventureWorks2017" "{{ SQLBACKUPDIR }}\AdventureWorks2017.bak"
+Backup-SqlDatabase -ServerInstance {{ hostvars[host]['ansible_hostname'] }} -Database "AdventureWorks2017" "{{ SQLBACKUPDIR }}\AdventureWorks2017.trn" -backupaction 'log'
+
+{% endfor %}
+
+##add DB to Availability Group
+Add-SqlAvailabilityDatabase -Path "SQLSERVER:\SQL\{{ hostvars[groups['dc'][0]]['inventory_hostname'] }}\Default\AvailabilityGroups\{{ ag }}" -Database "AdventureWorks2017" 
