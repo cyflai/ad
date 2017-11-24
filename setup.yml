@@ -49,6 +49,7 @@
 
   - win_reboot:
     when: domain_state.reboot_required
+
  
   - win_shell: Enable-WSManCredSSP -Role Client -DelegateComputer * -force
   
@@ -184,11 +185,6 @@
     force: yes
     tags: setupalwayson
 
-  - name: install alwayson
-    win_shell: "{{ alwayson_file }}"
-    tags: installalwayson
-    run_once: yes
-
   - win_stat:
       path: "{{ sqlstudio_path }}"
       get_checksum: yes
@@ -216,3 +212,10 @@
        url: https://gitlab.hds-cloudconnect.com:8443/AdventureWorks2017.bak
        dest: 'c:\AdventureWorks2017.bak'
     tags: downloadsamplesqldb
+
+  - name: install alwayson
+    win_shell: "{{ alwayson_file }}"
+    tags: installalwayson
+    run_once: yes
+
+
